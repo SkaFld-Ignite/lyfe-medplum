@@ -6,7 +6,7 @@ FROM node:22-slim AS builder
 WORKDIR /usr/src/medplum
 
 # Copy root package files
-COPY package.json package-lock.json tsconfig.json turbo.json ./
+COPY package.json package-lock.json tsconfig.json turbo.json api-extractor.json ./
 
 # Copy package.json files for all app dependencies
 COPY packages/core/package.json packages/core/
