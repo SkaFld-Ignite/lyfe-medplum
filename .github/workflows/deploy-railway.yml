@@ -78,12 +78,18 @@ jobs:
 
     steps:
       - name: Trigger Railway redeploy
+        env:
+          WEBHOOK_SERVER: ${{ secrets.RAILWAY_DEPLOY_WEBHOOK_SERVER }}
+          WEBHOOK_APP: ${{ secrets.RAILWAY_DEPLOY_WEBHOOK_APP }}
         run: |
-          curl -X POST "${{ secrets.RAILWAY_DEPLOY_WEBHOOK_SERVER }}" \
+          if [[ -z "$WEBHOOK_SERVER" ]]; then echo "Missing RAILWAY_DEPLOY_WEBHOOK_SERVER secret" && exit 1; fi
+          if [[ -z "$WEBHOOK_APP" ]]; then echo "Missing RAILWAY_DEPLOY_WEBHOOK_APP secret" && exit 1; fi
+
+          curl -X POST "$WEBHOOK_SERVER" \
             -H "Content-Type: application/json" \
             --fail --silent --show-error
 
-          curl -X POST "${{ secrets.RAILWAY_DEPLOY_WEBHOOK_APP }}" \
+          curl -X POST "$WEBHOOK_APP" \
             -H "Content-Type: application/json" \
             --fail --silent --show-error
 

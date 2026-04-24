@@ -61,6 +61,7 @@ COPY --from=builder /usr/src/medplum/packages/definitions/dist packages/definiti
 COPY --from=builder /usr/src/medplum/packages/fhirtypes/dist packages/fhirtypes/dist
 COPY --from=builder /usr/src/medplum/packages/fhir-router/dist packages/fhir-router/dist
 COPY --from=builder /usr/src/medplum/packages/ccda/dist packages/ccda/dist
+# Note: bot-layer has no dist/ — it's a pure npm package resolved from node_modules
 COPY --from=builder /usr/src/medplum/packages/server/dist packages/server/dist
 
 # Create binary storage directory (mounted as Railway volume in prod)
