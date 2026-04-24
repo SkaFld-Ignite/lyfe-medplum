@@ -1,0 +1,75 @@
+# ============================================================
+# Stage 1: Install all dependencies and build the server
+# ============================================================
+FROM node:22-slim AS builder
+
+WORKDIR /usr/src/medplum
+
+# Copy root package files for workspace resolution
+COPY package.json package-lock.json tsconfig.json ./
+
+# Copy only the package.json files for packages the server depends on
+# This lets Docker cache the npm ci layer when only source code changes
+COPY packages/core/package.json packages/core/
+COPY packages/definitions/package.json packages/definitions/
+COPY packages/fhirtypes/package.json packages/fhirtypes/
+COPY packages/fhir-router/package.json packages/fhir-router/
+COPY packages/ccda/package.json packages/ccda/
+COPY packages/bot-layer/package.json packages/bot-layer/
+COPY packages/server/package.json packages/server/
+
+# Install all dependencies (including dev deps needed for build)
+RUN npm ci
+
+# Copy source code for each required package
+COPY packages/fhirtypes/ packages/fhirtypes/
+COPY packages/core/ packages/core/
+COPY packages/definitions/ packages/definitions/
+COPY packages/fhir-router/ packages/fhir-router/
+COPY packages/ccda/ packages/ccda/
+COPY packages/bot-layer/ packages/bot-layer/
+COPY packages/server/ packages/server/
+
+# Build server and all its dependencies via Turborepo
+RUN npx turbo run build --filter=@medplum/server
+
+# ============================================================
+# Stage 2: Production runtime (slim image, no dev deps)
+# ============================================================
+FROM node:22-slim AS runtime
+
+ENV NODE_ENV=production
+WORKDIR /usr/src/medplum
+
+# Copy package files for production dependency install
+COPY --from=builder /usr/src/medplum/package.json ./
+COPY --from=builder /usr/src/medplum/package-lock.json ./
+COPY --from=builder /usr/src/medplum/packages/core/package.json packages/core/
+COPY --from=builder /usr/src/medplum/packages/definitions/package.json packages/definitions/
+COPY --from=builder /usr/src/medplum/packages/fhirtypes/package.json packages/fhirtypes/
+COPY --from=builder /usr/src/medplum/packages/fhir-router/package.json packages/fhir-router/
+COPY --from=builder /usr/src/medplum/packages/ccda/package.json packages/ccda/
+COPY --from=builder /usr/src/medplum/packages/bot-layer/package.json packages/bot-layer/
+COPY --from=builder /usr/src/medplum/packages/server/package.json packages/server/
+
+# Install production-only dependencies
+RUN npm ci --omit=dev && rm package-lock.json
+
+# Copy compiled output from builder
+COPY --from=builder /usr/src/medplum/packages/core/dist packages/core/dist
+COPY --from=builder /usr/src/medplum/packages/definitions/dist packages/definitions/dist
+COPY --from=builder /usr/src/medplum/packages/fhirtypes/dist packages/fhirtypes/dist
+COPY --from=builder /usr/src/medplum/packages/fhir-router/dist packages/fhir-router/dist
+COPY --from=builder /usr/src/medplum/packages/ccda/dist packages/ccda/dist
+COPY --from=builder /usr/src/medplum/packages/server/dist packages/server/dist
+
+# Create binary storage directory (mounted as Railway volume in prod)
+RUN mkdir -p /usr/src/medplum/binary && chown -R node:node /usr/src/medplum/binary
+
+USER node
+
+EXPOSE 8103
+
+# "env" tells Medplum to load config from MEDPLUM_* environment variables
+ENTRYPOINT ["node", "--import", "./packages/server/dist/otel/instrumentation.js", "packages/server/dist/index.js"]
+CMD ["env"]
