@@ -37,6 +37,9 @@ ENV RECAPTCHA_SITE_KEY=__RECAPTCHA_SITE_KEY__
 ENV MEDPLUM_REGISTER_ENABLED=__MEDPLUM_REGISTER_ENABLED__
 ENV MEDPLUM_AWS_TEXTRACT_ENABLED=__MEDPLUM_AWS_TEXTRACT_ENABLED__
 
+# Remove test files — they import dev-only peer deps that aren't available
+RUN find packages -name '*.test.ts' -delete && find packages -name '*.test.tsx' -delete
+
 RUN npx turbo run build --filter=@medplum/app
 
 # ============================================================

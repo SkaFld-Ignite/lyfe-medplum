@@ -30,6 +30,9 @@ COPY packages/ccda/ packages/ccda/
 COPY packages/bot-layer/ packages/bot-layer/
 COPY packages/server/ packages/server/
 
+# Remove test files — they import dev-only peer deps that aren't available
+RUN find packages -name '*.test.ts' -delete && find packages -name '*.test.tsx' -delete
+
 # Build server and all its dependencies via Turborepo
 RUN npx turbo run build --filter=@medplum/server
 
