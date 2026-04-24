@@ -6,7 +6,10 @@ FROM node:22-slim AS builder
 WORKDIR /usr/src/medplum
 
 # Copy root package files
-COPY package.json package-lock.json tsconfig.json turbo.json api-extractor.json ./
+COPY package.json package-lock.json tsconfig.json turbo.json api-extractor.json tsdoc.json ./
+
+# git is needed by esbuild.mjs for version stamping
+RUN apt-get update && apt-get install -y git --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
 # Copy package.json files for all app dependencies
 COPY packages/core/package.json packages/core/
