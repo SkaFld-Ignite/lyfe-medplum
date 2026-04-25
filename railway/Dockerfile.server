@@ -5,14 +5,14 @@ FROM node:22-slim AS builder
 
 WORKDIR /usr/src/medplum
 
-# Copy root package files for workspace resolution
-COPY package.json package-lock.json tsconfig.json turbo.json api-extractor.json tsdoc.json ./
-
 # git is needed by esbuild.mjs for version stamping
 RUN apt-get update && apt-get install -y git --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
-# Copy only the package.json files for packages the server depends on
-# This lets Docker cache the npm ci layer when only source code changes
+# Copy root config files
+COPY package.json package-lock.json tsconfig.json turbo.json api-extractor.json tsdoc.json ./
+
+# Copy ALL workspace package.json files so npm can resolve the full dependency graph.
+# This ensures root devDeps like @types/node get hoisted correctly.
 COPY packages/core/package.json packages/core/
 COPY packages/definitions/package.json packages/definitions/
 COPY packages/fhirtypes/package.json packages/fhirtypes/
@@ -20,11 +20,32 @@ COPY packages/fhir-router/package.json packages/fhir-router/
 COPY packages/ccda/package.json packages/ccda/
 COPY packages/bot-layer/package.json packages/bot-layer/
 COPY packages/server/package.json packages/server/
+COPY packages/react-hooks/package.json packages/react-hooks/
+COPY packages/react/package.json packages/react/
+COPY packages/app/package.json packages/app/
+COPY packages/cli/package.json packages/cli/
+COPY packages/cli-wrapper/package.json packages/cli-wrapper/
+COPY packages/hl7/package.json packages/hl7/
+COPY packages/mock/package.json packages/mock/
+COPY packages/agent/package.json packages/agent/
+COPY packages/cdk/package.json packages/cdk/
+COPY packages/docs/package.json packages/docs/
+COPY packages/graphiql/package.json packages/graphiql/
+COPY packages/e2e/package.json packages/e2e/
+COPY packages/eslint-config/package.json packages/eslint-config/
+COPY packages/examples/package.json packages/examples/
+COPY packages/generator/package.json packages/generator/
+COPY packages/create-medplum/package.json packages/create-medplum/
+COPY packages/dosespot-core/package.json packages/dosespot-core/
+COPY packages/dosespot-react/package.json packages/dosespot-react/
+COPY packages/health-gorilla-core/package.json packages/health-gorilla-core/
+COPY packages/health-gorilla-react/package.json packages/health-gorilla-react/
+COPY packages/scriptsure-react/package.json packages/scriptsure-react/
 
 # Install all dependencies (including dev deps needed for build)
 RUN npm ci
 
-# Copy source code for each required package
+# Copy source code only for packages the server needs
 COPY packages/fhirtypes/ packages/fhirtypes/
 COPY packages/core/ packages/core/
 COPY packages/definitions/ packages/definitions/
@@ -33,7 +54,7 @@ COPY packages/ccda/ packages/ccda/
 COPY packages/bot-layer/ packages/bot-layer/
 COPY packages/server/ packages/server/
 
-# Remove test files — they import dev-only peer deps that aren't available
+# Remove test files — they import dev-only peer deps not available in partial workspace
 RUN find packages -name '*.test.ts' -delete && find packages -name '*.test.tsx' -delete
 
 # Build server and all its dependencies via Turborepo
