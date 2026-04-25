@@ -51,6 +51,7 @@ COPY packages/definitions/ packages/definitions/
 COPY packages/fhir-router/ packages/fhir-router/
 COPY packages/react-hooks/ packages/react-hooks/
 COPY packages/react/ packages/react/
+COPY packages/mock/ packages/mock/
 COPY packages/app/ packages/app/
 
 # Remove test files — they import dev-only peer deps not available in partial workspace
